@@ -83,12 +83,12 @@ function loadSettings() {
 }
 
 const observer = new MutationObserver((m) =>
-  m.forEach((x) => x.addedNodes.forEach(applyFilters))
+  m.forEach((x) => x.addedNodes.forEach(applyFilters)),
 );
 observer.observe(document.body, { childList: true, subtree: true });
 
 chrome.storage.onChanged.addListener(loadSettings);
 
 setInterval(updateQuoteBar, 15000);
-
+// Load initial settings
 loadSettings();
