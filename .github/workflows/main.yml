@@ -1,0 +1,59 @@
+name: Update parent backup submodule reference
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: parent-backup-update
+  cancel-in-progress: false
+
+env:
+  PARENT_REPO: ASayushsrivastava/admiral_complete_17-01-26
+  PARENT_BRANCH: main
+  SUBMODULE_PATH: Extensions/youtube-strict-focus-extension   
+
+jobs:
+  update-parent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout child repo
+        uses: actions/checkout@v4
+
+      - name: Capture child commit SHA
+        id: child
+        run: echo "SHA=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Checkout parent repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PARENT_REPO }}
+          ref: ${{ env.PARENT_BRANCH }}
+          token: ${{ secrets.PARENT_REPO_TOKEN }}
+          path: parent
+
+      - name: Update submodule pointer
+        run: |
+          cd parent
+          git submodule update --init --recursive
+
+          cd "${SUBMODULE_PATH}"
+          git fetch origin
+          git checkout ${{ steps.child.outputs.SHA }}
+
+          cd - > /dev/null
+
+      - name: Commit and push parent update
+        run: |
+          cd parent
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add "${SUBMODULE_PATH}"
+
+          git commit -m "chore(backup): update $(basename "${SUBMODULE_PATH}") to ${{ steps.child.outputs.SHA }}" || echo "No changes to commit"
+
+          git pull --rebase origin ${{ env.PARENT_BRANCH }}
+          git push origin ${{ env.PARENT_BRANCH }}
